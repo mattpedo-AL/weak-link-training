@@ -653,7 +653,7 @@ document.getElementById("tSound").onclick = e=>{ sound=!sound; e.target.textCont
 /* ---------- events ---------- */
 view.addEventListener("input", e=>{
   const t = e.target;
-  if(t.dataset.k){ const s = DRAFT[t.dataset.k][+t.dataset.j]; s[t.dataset.f] = t.value; saveDraft(); }
+  if(t.dataset.k){ const s = DRAFT[t.dataset.k][+t.dataset.j]; s[t.dataset.f] = t.value; if(t.dataset.f==="r") t.removeAttribute("aria-invalid"); saveDraft(); }
   else if(t.dataset.lift){ P.example = false; P.lifts[t.dataset.lift] = P.lifts[t.dataset.lift]||{}; P.lifts[t.dataset.lift][t.dataset.f] = t.value===""?"":+t.value; saveProfile(); }
   else if(t.dataset.bw){ P.bw = +t.value; saveProfile(); }
 });
@@ -672,7 +672,11 @@ view.addEventListener("click", e=>{
   if(t.dataset.tick){
     const s = DRAFT[t.dataset.tick][+t.dataset.j];
     const wIn = t.parentElement.querySelector('[data-f="w"]'), rIn = t.parentElement.querySelector('[data-f="r"]');
-    if(!s.done){ if(s.w==="") s.w = wIn.placeholder.replace(/[^\d.]/g,""); if(s.r==="") s.r = rIn.placeholder.replace(/[^\d]/g,""); wIn.value=s.w; rIn.value=s.r; }
+    if(!s.done){
+      if(s.w==="") s.w = wIn.placeholder.replace(/[^\d.]/g,""); if(s.r==="") s.r = rIn.placeholder.replace(/[^\d]/g,""); wIn.value=s.w; rIn.value=s.r;
+      // No reps typed and none to copy from last time: a set with 0 reps isn't logged, so ask for reps instead of ticking
+      if(!(+s.r>0)){ s.r=""; rIn.value=""; rIn.setAttribute("aria-invalid","true"); rIn.focus(); saveDraft(); return; }
+    }
     s.done = !s.done; t.classList.toggle("done", s.done); saveDraft();
     if(s.done) startRest(+t.dataset.rest);
   } else if(t.dataset.addset){ DRAFT[t.dataset.addset].push({w:"",r:"",done:false}); saveDraft(); rerender(); }
