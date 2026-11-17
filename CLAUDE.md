@@ -33,17 +33,17 @@ Static files, no build step, no dependencies, no backend.
 - Readiness: weekly check-in vs baseline (RHR +5, HRV −10%, sleep, soreness, stress) trims volume
 
 ## Testing
-Serve the folder (`python3 -m http.server 8765`) and drive it with Playwright at a phone viewport (390×844). Flows to cover:
+Run `npm install` once, then `npm test`. The Playwright config (`playwright.config.js`) serves the folder with `python3 -m http.server 8765` and drives it at a phone viewport (390×844). Tests live in `tests/app.spec.js` and cover:
 1. Pick a day → heading changes → survives reload
 2. Fill reps, tick a set, Finish → "Session saved" → next day shown → survives reload
 3. Type a lift on Assess → survives reload
 4. Export → Reset → Import → data restored
 5. Service worker controls the page; reload works offline
-Also check for zero `pageerror` events.
+Also check for zero `pageerror` events (enforced on every test), plus regression tests for the two fixed rough edges below.
 
 ## Known rough edges / ideas
-- The sticky header's "Saved on this device" line has no background, so content scrolls visibly behind it.
-- Ticking a set with empty reps and no reps placeholder logs nothing, silently.
+- Fixed: the sticky header's "Saved on this device" line is now an opaque glass pill, so content no longer shows through it.
+- Fixed: ticking a set with empty reps and no reps placeholder now highlights and focuses the reps box instead of silently logging nothing.
 - Session ids use `"s"+Date.now()`; fine for one device.
 - No cross-device sync by design. If wanted later: Supabase (magic-link auth plus one row per user) is the planned route.
 
