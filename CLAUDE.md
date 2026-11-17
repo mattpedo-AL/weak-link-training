@@ -48,7 +48,7 @@ Also check for zero `pageerror` events (enforced on every test), plus regression
 - Fixed: changing day in the Today picker silently wiped entered sets. It now asks first.
 - Fixed: the Program phase picker only listed phases 1–6, so phase 7+ displayed as phase 1.
 - Fixed: on weak gym signal the network-first service worker could hang. It now serves the cached copy after 3 s.
-- Minor, not fixed: session log and assessment dates are inserted without `esc()`. Only matters for a tampered backup file.
+- Fixed: a tampered backup could inject HTML (dates and numbers went into templates unescaped). Restore now runs `cleanProfile()`/`cleanSessions()` (dates must be YYYY-MM-DD, weights/reps numbers, unknown exercises dropped), and displayed dates go through `esc()`.
 - Session ids use `"s"+Date.now()`; fine for one device.
 - No cross-device sync by design. If wanted later: Supabase (magic-link auth plus one row per user) is the planned route.
 

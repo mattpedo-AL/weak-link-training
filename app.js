@@ -204,6 +204,42 @@ function syncLabel(){
   return "Saved on this device" + b;
 }
 
+/* ---------- clean data from a backup file: numbers stay numbers, dates stay dates ---------- */
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const cNum = x => { if(x===""||x==null) return ""; const n = Number(x); return isFinite(n) ? n : ""; };
+const cOpt = x => { const n = cNum(x); return n==="" ? null : n; };
+const cDate = x => typeof x==="string" && DATE_RE.test(x) ? x : null;
+function cleanProfile(p){
+  p.bw = cNum(p.bw);
+  const lifts = {}; Object.keys(p.lifts||{}).forEach(k=>{ const l = p.lifts[k]||{}; lifts[k] = {w:cNum(l.w), r:cNum(l.r)}; }); p.lifts = lifts;
+  p.prog = {phase:Math.max(1, Math.floor(+(p.prog||{}).phase)||1), week:Math.min(4, Math.max(1, Math.floor(+(p.prog||{}).week)||1)), day:Math.max(0, Math.floor(+(p.prog||{}).day)||0)};
+  p.plan = Object.assign({days:4,hybrid:false,finisher:true}, p.plan||{}); if(![3,4,5].includes(+p.plan.days)) p.plan.days = 4; p.plan.days = +p.plan.days;
+  p.assessments = (Array.isArray(p.assessments)?p.assessments:[]).filter(a=>a && cDate(a.date)).map(a=>{
+    const ls = {}; Object.keys(a.lifts||{}).forEach(k=>{ const l = a.lifts[k]||{}; ls[k] = {w:cNum(l.w), r:cNum(l.r)}; });
+    return {date:a.date, bw:cNum(a.bw), lifts:ls, weak:Array.isArray(a.weak)?a.weak.map(String):[]}; });
+  p.checkins = (Array.isArray(p.checkins)?p.checkins:[]).filter(c=>c && cDate(c.date)).map(c=>{
+    const o = {date:c.date, phase:Math.floor(+c.phase)||1, week:Math.floor(+c.week)||1};
+    if(c.skipped) o.skipped = true;
+    ["rhr","hrv","sleep","bw","waist","sore","stress","level"].forEach(k=>{ if(k in c) o[k] = cOpt(c[k]); });
+    return o; });
+  if(p.baseline && typeof p.baseline==="object"){ const b = p.baseline;
+    p.baseline = {date:cDate(b.date)||today(), goal:["size","strength","hybrid"].includes(b.goal)?b.goal:"size", age:["<1","1-3","3+"].includes(b.age)?b.age:"1-3"};
+    if(b.skipped) p.baseline.skipped = true;
+    ["days","bw","waist","rhr","hrv","sleep"].forEach(k=>{ if(k in b) p.baseline[k] = cOpt(b[k]); });
+  } else p.baseline = null;
+  const sc = {}; Object.keys(p.screen||{}).forEach(k=>{ sc[k] = !!p.screen[k]; }); p.screen = sc;
+  const sw = {}; Object.keys(p.swaps||{}).forEach(k=>{ if(EX[p.swaps[k]]) sw[k] = p.swaps[k]; }); p.swaps = sw;
+  return p;
+}
+function cleanSessions(list){
+  return list.filter(x=>x && cDate(x.date)).map(x=>({
+    id:String(x.id||"s"+x.ts), ts:Number(x.ts)||Date.parse(x.date)||0, date:x.date, day:String(x.day||""),
+    phase:Math.floor(+x.phase)||1, week:Math.floor(+x.week)||1,
+    entries:(Array.isArray(x.entries)?x.entries:[]).filter(e=>e && EX[e.ex]).map(e=>({ex:e.ex,
+      sets:(Array.isArray(e.sets)?e.sets:[]).map(t=>({w:Number(t&&t.w)||0, r:Number(t&&t.r)||0})).filter(t=>isFinite(t.w) && t.r>0)})).filter(e=>e.sets.length)
+  }));
+}
+
 /* ---------- backup ---------- */
 function exportData(){
   const data = {app:"weak-link-training", version:1, exported:new Date().toISOString(), profile:P, sessions:SESSIONS};
@@ -226,8 +262,8 @@ function importData(file){
     let d; try{ d = JSON.parse(rd.result); }catch(e){ d = null; }
     if(!d || !d.profile || !Array.isArray(d.sessions)){ modal("Couldn't read that file", "Pick a backup file this app exported (weak-link-backup-….json).", [["OK",null,true]]); return; }
     modal("Restore this backup?", `It has ${d.sessions.length} logged session${d.sessions.length===1?"":"s"}${d.exported?`, saved ${d.exported.slice(0,10)}`:""}. It replaces everything currently on this device.`, [["Restore", ()=>{
-      P = Object.assign(EXAMPLE(), d.profile); P.swaps = P.swaps||{};
-      SESSIONS = d.sessions.slice().sort((a,b)=>a.ts-b.ts);
+      P = cleanProfile(Object.assign(EXAMPLE(), d.profile));
+      SESSIONS = cleanSessions(d.sessions).sort((a,b)=>a.ts-b.ts);
       DRAFT = {}; DRAFT_DAY = null; lsSet("wl.draft", null);
       saveProfile(); lsSet("wl.sessions", SESSIONS);
       location.hash = "#today"; route();
@@ -510,7 +546,7 @@ function vPlan(){
       ${sl.map(s=>`<div class="row between"><span><b class="mono">${s.label}</b> ${esc(EX[s.ex].n)}</span><span class="small muted tnum">${s.sets}×${esc(s.reps)} · <span class="mono">${s.tempo}</span></span></div>`).join("")}</div></section>`;
   });
   const lb = lsGet("wl.lastBackup");
-  h += `<section class="card"><div class="row between"><h2>Backup</h2><span class="chip ${lb?"mut":"warn"}">${lb?"Last backup "+lb:"No backup yet"}</span></div>
+  h += `<section class="card"><div class="row between"><h2>Backup</h2><span class="chip ${lb?"mut":"warn"}">${lb?"Last backup "+esc(lb):"No backup yet"}</span></div>
     <p class="small muted">Your data lives only on this device. Export a backup every few weeks and save it to Files, iCloud Drive or email. Restore it here if you change phones or clear your browser.</p>
     <div class="btns"><button class="primary" id="exportBtn" style="height:44px">Export backup</button><button id="importBtn">Restore from backup</button></div></section>`;
   h += `<section class="card"><h3>How phases run</h3><p class="small muted">Odd phases are accumulation: more sets, 6–12 reps, long lowering phases. Even phases are intensification: fewer reps, heavier loads, an explosive lift. Each phase is three building weeks and a deload, then you re-test and the program rebuilds around the new numbers.</p>
@@ -534,7 +570,7 @@ function chart(S){
   let lo = Math.min(...all.map(p=>p.v)), hi = Math.max(...all.map(p=>p.v)); const pad=(hi-lo)*0.1||10; lo=Math.max(0,Math.floor((lo-pad)/10)*10); hi=Math.ceil((hi+pad)/10)*10;
   const W=640,H=240,L=40,R=12,T=12,B=26; const x=d=>L+(Date.parse(d)-t0)/(t1-t0)*(W-L-R); const y=val=>T+(hi-val)/(hi-lo)*(H-T-B);
   let g=""; for(let i=0;i<=4;i++){ const val=lo+(hi-lo)*i/4; g+=`<line x1="${L}" x2="${W-R}" y1="${y(val)}" y2="${y(val)}" stroke="var(--line)"/><text x="${L-6}" y="${y(val)+4}" text-anchor="end">${Math.round(val)}</text>`; }
-  g+=`<text x="${L}" y="${H-6}">${dates[0].slice(5)}</text><text x="${W-R}" y="${H-6}" text-anchor="end">${dates[dates.length-1].slice(5)}</text>`;
+  g+=`<text x="${L}" y="${H-6}">${esc(dates[0].slice(5))}</text><text x="${W-R}" y="${H-6}" text-anchor="end">${esc(dates[dates.length-1].slice(5))}</text>`;
   S.forEach(s=>{ if(!s.pts.length) return; const d=s.pts.map((p,i)=>(i?"L":"M")+x(p.d).toFixed(1)+" "+y(p.v).toFixed(1)).join(" "); const e=s.pts[s.pts.length-1];
     g+=`<path d="${d}" fill="none" stroke="var(${s.c})" stroke-width="2.5" stroke-linejoin="round"/><circle cx="${x(e.d)}" cy="${y(e.v)}" r="4.5" fill="var(${s.c})"/>`; });
   return `<div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Estimated one-rep max over time">${g}</svg></div>
@@ -563,10 +599,10 @@ function vProgress(){
   let h = vBody() + `<section class="card"><h2>Estimated maxes</h2><p class="small muted">Best set of each session, converted to an estimated one-rep max (kg). Chin-up includes bodyweight.</p>${chart(S)}</section>`;
   const as = P.assessments||[];
   if(as.length){
-    h += `<section class="card"><h2>Assessments</h2><div class="list">${as.slice().reverse().map(a=>`<div class="row between"><span>${a.date}</span><span class="small muted">Weak links: ${a.weak&&a.weak.length?a.weak.length:"none"}</span></div>`).join("")}</div></section>`;
+    h += `<section class="card"><h2>Assessments</h2><div class="list">${as.slice().reverse().map(a=>`<div class="row between"><span>${esc(a.date)}</span><span class="small muted">Weak links: ${a.weak&&a.weak.length?a.weak.length:"none"}</span></div>`).join("")}</div></section>`;
   }
-  h += `<section class="card"><h2>Session log</h2>${SESSIONS.length?`<div class="list">${SESSIONS.slice().reverse().slice(0,30).map(s=>`<div><div class="row between"><b>${esc(s.day)}</b><span class="small muted">${s.date} · P${s.phase} W${s.week}</span></div>
-    <div class="small muted">${(s.entries||[]).map(e=>esc(EX[e.ex]?EX[e.ex].n:e.ex)+": "+e.sets.map(x=>x.w+"×"+x.r).join(", ")).join(" · ")}</div></div>`).join("")}</div>`:`<p class="small muted">No sessions yet. Your first finished session shows up here.</p>`}</section>`;
+  h += `<section class="card"><h2>Session log</h2>${SESSIONS.length?`<div class="list">${SESSIONS.slice().reverse().slice(0,30).map(s=>`<div><div class="row between"><b>${esc(s.day)}</b><span class="small muted">${esc(s.date)} · P${esc(s.phase)} W${esc(s.week)}</span></div>
+    <div class="small muted">${(s.entries||[]).map(e=>esc(EX[e.ex]?EX[e.ex].n:e.ex)+": "+e.sets.map(x=>esc(x.w)+"×"+esc(x.r)).join(", ")).join(" · ")}</div></div>`).join("")}</div>`:`<p class="small muted">No sessions yet. Your first finished session shows up here.</p>`}</section>`;
   return h;
 }
 function vMethod(){

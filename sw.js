@@ -1,5 +1,5 @@
 /* Offline support. Bump VERSION whenever you change any app file so phones pick up the update. */
-const VERSION = "wl-v3";
+const VERSION = "wl-v4";
 const ASSETS = ["./", "index.html", "app.css", "app.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", e => {

@@ -198,3 +198,34 @@ test("Program page shows the right phase after phase 6", async ({ page }) => {
   await page.reload();
   await expect(page.locator("#pPhase")).toHaveValue("7");
 });
+
+test("restoring a tampered backup can't inject HTML or script", async ({ page }, info) => {
+  const bad = '<img src=x onerror="window.__pwned=1">';
+  const backup = {
+    app: "weak-link-training", version: 1, exported: "2026-11-01T00:00:00Z",
+    profile: {
+      bw: bad, lifts: { cgbench: { w: bad, r: 5 } }, prog: { phase: 1, week: 1, day: 0 },
+      assessments: [{ date: bad, bw: 80, lifts: {}, weak: [] }],
+      checkins: [{ date: bad, phase: 1, week: 1, bw: bad }],
+    },
+    sessions: [
+      { id: "s1", ts: 1, date: bad, day: "Upper A", phase: bad, week: bad, entries: [{ ex: "bench", sets: [{ w: bad, r: bad }] }] },
+      { id: "s2", ts: 2, date: "2026-11-02", day: "Upper A", phase: 1, week: 1, entries: [{ ex: "bench", sets: [{ w: 70, r: 6 }] }] },
+    ],
+  };
+  const file = info.outputPath("bad.json");
+  require("fs").writeFileSync(file, JSON.stringify(backup));
+
+  await page.goto("./#plan");
+  await page.setInputFiles("#importFile", file);
+  await page.locator("#mBtns button", { hasText: "Restore" }).click();
+  await page.locator("#mBtns button", { hasText: "Done" }).click();
+  for (const h of ["#today", "#assess", "#plan", "#progress"]) {
+    await page.goto("./" + h);
+    await page.waitForTimeout(100);
+    expect(await page.locator("#view img").count(), h).toBe(0);
+  }
+  expect(await page.evaluate(() => window.__pwned)).toBeUndefined();
+  await page.goto("./#progress");
+  await expect(page.locator("#view")).toContainText("70×6");
+});
