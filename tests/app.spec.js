@@ -149,3 +149,52 @@ test("ticking a set with no reps asks for reps instead of logging nothing", asyn
   await tick.click();
   await expect(tick).toHaveClass(/done/);
 });
+
+/* Regression checks for bugs found in the debug pass */
+
+test("swapping an exercise mid-session keeps the sets already logged", async ({ page }) => {
+  await page.goto("./#today");
+  await page.fill("#w-0-0", "61");
+  await page.fill("#r-0-0", "8");
+  await page.locator('[data-tick][data-j="0"]').first().click();
+  await page.click("#restStop");
+
+  await page.locator("[data-swap]").first().click();
+  await page.locator("#mBody button[data-pick]:not(.cur)").first().click();
+
+  await page.click("#finish");
+  await expect(page.locator("#mTitle")).toHaveText("Session saved");
+  await page.locator("#mBtns button", { hasText: "Done" }).click();
+  await page.goto("./#progress");
+  await expect(page.locator("#view")).toContainText("61×8");
+});
+
+test("switching day with sets entered asks first, and Cancel keeps them", async ({ page }) => {
+  await page.goto("./#today");
+  const day1 = await heading(page).textContent();
+  await page.fill("#w-0-0", "55");
+  await page.fill("#r-0-0", "6");
+
+  await page.selectOption("#daySel", "1");
+  await expect(page.locator("#mTitle")).toHaveText("Switch day?");
+  await page.locator("#mBtns button", { hasText: "Cancel" }).click();
+  await expect(heading(page)).toHaveText(day1 || "");
+  await expect(page.locator("#daySel")).toHaveValue("0");
+  await expect(page.locator("#w-0-0")).toHaveValue("55");
+
+  await page.selectOption("#daySel", "1");
+  await page.locator("#mBtns button", { hasText: "Switch" }).click();
+  await expect(heading(page)).not.toHaveText(day1 || "");
+});
+
+test("Program page shows the right phase after phase 6", async ({ page }) => {
+  await page.goto("./#today");
+  await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem("wl.profile") || "null") || {};
+    p.prog = { phase: 7, week: 2, day: 0 };
+    localStorage.setItem("wl.profile", JSON.stringify(p));
+  });
+  await page.goto("./#plan");
+  await page.reload();
+  await expect(page.locator("#pPhase")).toHaveValue("7");
+});

@@ -1,5 +1,5 @@
 /* Offline support. Bump VERSION whenever you change any app file so phones pick up the update. */
-const VERSION = "wl-v2";
+const VERSION = "wl-v3";
 const ASSETS = ["./", "index.html", "app.css", "app.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", e => {
@@ -16,10 +16,14 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin === location.origin) {
-    e.respondWith(fetch(req).then(res => {
+    const cached = () => caches.match(req, {ignoreSearch: true}).then(r => r || caches.match("index.html"));
+    const net = fetch(req).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
       return res;
-    }).catch(() => caches.match(req, {ignoreSearch: true}).then(r => r || caches.match("index.html"))));
+    });
+    // Weak signal can stall a request for a long time: use the cached copy after 3 s if there is one.
+    const slow = new Promise(r => setTimeout(r, 3000)).then(cached).then(r => r || net);
+    e.respondWith(Promise.race([net.catch(cached), slow]));
   } else if (/fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)) {
     e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => {
       const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); return res;

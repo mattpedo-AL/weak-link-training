@@ -39,11 +39,16 @@ Run `npm install` once, then `npm test`. The Playwright config (`playwright.conf
 3. Type a lift on Assess → survives reload
 4. Export → Reset → Import → data restored
 5. Service worker controls the page; reload works offline
-Also check for zero `pageerror` events (enforced on every test), plus regression tests for the two fixed rough edges below.
+Also check for zero `pageerror` events (enforced on every test), plus regression tests for the fixed rough edges and bugs below.
 
 ## Known rough edges / ideas
 - Fixed: the sticky header's "Saved on this device" line is now an opaque glass pill, so content no longer shows through it.
 - Fixed: ticking a set with empty reps and no reps placeholder now highlights and focuses the reps box instead of silently logging nothing.
+- Fixed: swapping an exercise mid-session dropped the sets already logged on it. `finish()` now reads every draft key (`"slot:exercise"`), not just the current slots.
+- Fixed: changing day in the Today picker silently wiped entered sets. It now asks first.
+- Fixed: the Program phase picker only listed phases 1–6, so phase 7+ displayed as phase 1.
+- Fixed: on weak gym signal the network-first service worker could hang. It now serves the cached copy after 3 s.
+- Minor, not fixed: session log and assessment dates are inserted without `esc()`. Only matters for a tampered backup file.
 - Session ids use `"s"+Date.now()`; fine for one device.
 - No cross-device sync by design. If wanted later: Supabase (magic-link auth plus one row per user) is the planned route.
 

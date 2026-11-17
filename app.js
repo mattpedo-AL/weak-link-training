@@ -498,7 +498,7 @@ function vPlan(){
   let h = exampleBanner();
   h += `<section class="card"><h2>Settings</h2><div class="grid2">
     <label class="f" for="pDays">Lifting days per week<select id="pDays">${[3,4,5].map(n=>`<option ${P.plan.days==n?"selected":""}>${n}</option>`).join("")}</select></label>
-    <label class="f" for="pPhase">Current phase<select id="pPhase">${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${P.prog.phase==n?"selected":""}>Phase ${n}: ${PHASES[phaseKey(n)].name}</option>`).join("")}</select></label>
+    <label class="f" for="pPhase">Current phase<select id="pPhase">${Array.from({length:Math.max(6, P.prog.phase)}, (_,i)=>i+1).map(n=>`<option value="${n}" ${P.prog.phase==n?"selected":""}>Phase ${n}: ${PHASES[phaseKey(n)].name}</option>`).join("")}</select></label>
     <label class="f" for="pWeek">Current week<select id="pWeek">${[1,2,3,4].map(n=>`<option ${P.prog.week==n?"selected":""}>${n}</option>`).join("")}</select></label></div>
     <div class="checks"><label for="pHybrid"><input type="checkbox" id="pHybrid" ${P.plan.hybrid?"checked":""}><span>I also run or do Hyrox. Trims lower-body accessory volume and drops leg pump work.</span></label>
     <label for="pFin"><input type="checkbox" id="pFin" ${P.plan.finisher?"checked":""}><span>Add a pump finisher in accumulation phases: a heavy start, then a metabolic finish.</span></label></div></section>`;
@@ -660,7 +660,12 @@ view.addEventListener("input", e=>{
 view.addEventListener("change", e=>{
   const t = e.target;
   if(t.dataset.screen){ P.screen[t.dataset.screen] = t.checked; saveProfile(); }
-  else if(t.id==="daySel"){ P.prog.day = +t.value; saveProfile(); route(); }
+  else if(t.id==="daySel"){
+    const go = ()=>{ P.prog.day = +t.value; saveProfile(); route(); };
+    const entered = Object.values(DRAFT).some(a=>a.some(x=>x.done || x.w!=="" || x.r!==""));
+    if(!entered) return go();
+    modal("Switch day?", "The sets you've entered for this day will be cleared.", [["Switch", go, true],["Cancel", ()=>{ t.value = String(Math.min(P.prog.day, split().length-1)); }]]);
+  }
   else if(t.id==="pDays"){ P.plan.days = +t.value; P.prog.day = 0; saveProfile(); rerender(); }
   else if(t.id==="pPhase"){ P.prog.phase = +t.value; saveProfile(); rerender(); }
   else if(t.id==="pWeek"){ P.prog.week = +t.value; saveProfile(); rerender(); }
@@ -715,9 +720,14 @@ view.addEventListener("click", e=>{
   }
 });
 function finish(){
-  const days = split(); const di = Math.min(P.prog.day, days.length-1); const slots = buildDay(days[di]);
+  const days = split(); const di = Math.min(P.prog.day, days.length-1);
+  // Every draft key ("slot:exercise") belongs to this day. Reading them all, not just the current slots,
+  // keeps sets logged on an exercise that was swapped out mid-session.
   const entries = [];
-  slots.forEach((s,idx)=>{ const d = DRAFT[idx+":"+s.ex]||[]; const sets = d.filter(x=>x.done || (x.w!=="" && x.r!=="")).map(x=>({w:+x.w||0, r:+x.r||0})).filter(x=>x.r>0); if(sets.length) entries.push({ex:s.ex, sets}); });
+  Object.keys(DRAFT).map(k=>{ const i = k.indexOf(":"); return {k, idx:+k.slice(0,i), ex:k.slice(i+1)}; })
+    .filter(o=>EX[o.ex]).sort((a,b)=>a.idx-b.idx)
+    .forEach(o=>{ const sets = (DRAFT[o.k]||[]).filter(x=>x.done || (x.w!=="" && x.r!=="")).map(x=>({w:+x.w||0, r:+x.r||0})).filter(x=>x.r>0);
+      if(!sets.length) return; const e = entries.find(x=>x.ex===o.ex); if(e) e.sets.push(...sets); else entries.push({ex:o.ex, sets}); });
   if(!entries.length){ modal("Nothing logged yet", "Tick off at least one set before finishing.", [["OK",null,true]]); return; }
   const ts = Date.now();
   addSession({id:"s"+ts, ts, date:today(), day:days[di], phase:P.prog.phase, week:P.prog.week, entries});
