@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weak Link Training</title>
+<meta name="description" content="Structural-balance strength training: assess your weak links, follow the program, log every set.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#E9E4DD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12100E" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Weak Link">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="wall" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i><i class="o4"></i></div>
+<header class="top">
+  <div class="wrap" style="position:relative">
+    <div class="topbar">
+      <div class="capsule glass brandcap"><i></i>Weak Link Training</div>
+      <button class="capsule glass glassbtn" id="themeBtn" aria-label="Switch to dark mode"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+      <button class="capsule glass glassbtn" id="glassBtn" style="margin-left:0" aria-label="Glass colour" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M12 3.5a8.5 8.5 0 0 1 0 17"/></svg></button>
+    </div>
+    <div class="picker" id="picker" role="dialog" aria-label="Glass colour">
+      <h3>Appearance</h3>
+      <div class="segw" role="radiogroup" aria-label="Appearance">
+        <button role="radio" data-mode="auto">Auto</button><button role="radio" data-mode="light">Light</button><button role="radio" data-mode="dark">Dark</button>
+      </div>
+      <h3 style="margin-top:14px">Glass colour</h3>
+      <div class="swatches" role="radiogroup">
+        <button class="swatch" role="radio" data-glass="amber"><i style="background:radial-gradient(circle at 30% 30%,#FFD49A,#FFA02F 60%,#C9680A)"></i>Amber</button>
+        <button class="swatch" role="radio" data-glass="ocean"><i style="background:radial-gradient(circle at 30% 30%,#B8DCFF,#4096FF 60%,#5A4FD8)"></i>Ocean</button>
+        <button class="swatch" role="radio" data-glass="rose"><i style="background:radial-gradient(circle at 30% 30%,#FFC9D6,#FF7094 60%,#B476FF)"></i>Rose</button>
+        <button class="swatch" role="radio" data-glass="sage"><i style="background:radial-gradient(circle at 30% 30%,#CDEBD5,#60BA84 60%,#56A0CE)"></i>Sage</button>
+        <button class="swatch" role="radio" data-glass="graphite"><i style="background:radial-gradient(circle at 30% 30%,#E4E4EA,#9496A4 60%,#5A6070)"></i>Graphite</button>
+      </div>
+    </div>
+    <nav class="tabs capsule glass" id="tabs" style="height:auto">
+      <a href="#today">Today</a>
+      <a href="#assess">Assess</a>
+      <a href="#plan">Program</a>
+      <a href="#progress">Progress</a>
+      <a href="#method">Method</a>
+    </nav>
+    <small id="syncState">Saved on this device</small>
+  </div>
+</header>
+<div class="wrap"><main id="view"></main></div>
+
+<div id="restbar"><div class="wrap"><div class="bar-in"><div><div class="small">Rest</div><div class="big" id="restT">0:00</div></div><div class="btns"><button id="restAdd">+15s</button><button id="restStop" class="primary" style="height:40px">Done</button></div></div></div></div>
+
+<div id="tempo" role="dialog" aria-label="Tempo coach"><div class="tcard">
+  <div class="reps" id="tRep">Rep 1</div>
+  <div class="phase" id="tPhase">Lower</div>
+  <div class="count" id="tCount">4</div>
+  <div class="steps" id="tSteps"></div>
+  <div class="small muted" id="tHint"></div>
+  <div class="btns"><button id="tSound" class="ghost">Sound on</button><button id="tStop" class="primary">Stop</button></div>
+</div></div>
+
+<div class="modal" id="modal"><div class="card"><h3 id="mTitle"></h3><p id="mBody" class="small muted"></p><div class="btns" id="mBtns"></div></div></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script src="app.js"></script>
+</body>
+</html>
